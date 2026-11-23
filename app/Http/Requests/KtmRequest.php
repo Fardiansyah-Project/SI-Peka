@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Override;
@@ -31,11 +32,13 @@ class KtmRequest extends FormRequest
                 'string',
                 'max:30',
                 'regex:/^[0-9A-Za-z.-]+$/',
-                Rule::unique('ktms', 'nim')->withoutTrashed(),
+                Rule::unique('ktms', 'nim')
+                    ->where(fn (Builder $query) => $query->where('status', '!=', 'rejected'))
+                    ->withoutTrashed(),
             ],
             'email' => ['required', 'email:rfc,dns', 'max:255'],
             'program_studi' => ['required', 'string', 'max:120'],
-            'angkatan' => ['required', 'integer', 'min:2000', 'max:' . (now()->year)],
+            'angkatan' => ['required', 'integer', 'min:2000', 'max:'.(now()->year)],
             'foto' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
             'persetujuan' => ['accepted'],
         ];
@@ -62,7 +65,7 @@ class KtmRequest extends FormRequest
             'angkatan.required' => 'Angkatan harus diisi.',
             'angkatan.integer' => 'Angkatan harus berupa angka.',
             'angkatan.min' => 'Angkatan tidak boleh kurang dari 2000.',
-            'angkatan.max' => 'Angkatan tidak boleh lebih dari ' . (now()->year) . '.',
+            'angkatan.max' => 'Angkatan tidak boleh lebih dari '.(now()->year).'.',
             'foto.required' => 'Pas foto harus diunggah.',
             'foto.image' => 'File yang diunggah harus berupa gambar.',
             'foto.mimes' => 'File yang diunggah harus berupa JPG atau PNG.',
