@@ -6,6 +6,7 @@ use App\Http\Requests\KtmRequest;
 use App\Mail\KtmStatusUpdated;
 use App\Models\Ktm;
 use App\Services\DownloadCardServices;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -24,20 +25,30 @@ class KtmController extends Controller
 
     public function store(KtmRequest $request): RedirectResponse
     {
-
         $data = $request->validated();
 
         $fotoPath = $request->file('foto')->store('foto-ktm', 'public');
-        $ktm = Ktm::create([
-            'nama' => $data['nama'],
-            'nim' => $data['nim'],
-            'email' => $data['email'],
-            'program_studi' => $data['program_studi'],
-            'angkatan' => $data['angkatan'],
-            'foto_path' => $fotoPath,
-            'kode_pengajuan' => 'KTM-'.strtoupper(Str::random(8)),
-            'token_verifikasi' => Str::uuid()->toString(),
-        ]);
+
+        try {
+            $ktm = Ktm::create([
+                'nama'              => $data['nama'],
+                'nim'               => $data['nim'],
+                'email'             => $data['email'],
+                'program_studi'     => $data['program_studi'],
+                'angkatan'          => $data['angkatan'],
+                'foto_path'         => $fotoPath,
+                'kode_pengajuan'    => 'KTM-'.strtoupper(Str::random(8)),
+                'token_verifikasi'  => Str::uuid()->toString(),
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // Terjadi jika migration penghapusan unique index nim belum dijalankan di production.
+            // Kembalikan error validasi yang ramah pengguna alih-alih 500 Server Error.
+            Storage::disk('public')->delete($fotoPath);
+
+            return back()
+                ->withInput()
+                ->withErrors(['nim' => 'NIM sudah terdaftar. Jika Anda yakin data sebelumnya telah dihapus, hubungi administrator.']);
+        }
 
         return redirect()->route('ktm.success', $ktm->kode_pengajuan);
     }
